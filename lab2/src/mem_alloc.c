@@ -29,15 +29,16 @@ mem_free_block_t *first_free;
 /* You can define here functions that will be compiled only if the
  * symbol FIRST_FIT is defined, that is, only if the selected policy
  * is FF */
- void *allocate_memory(size_t size, mem_free_block_t *prev){
-    mem_free_block_t *cur = first_free;
+ void *allocate_memory(size_t size){
+    mem_free_block_t *cur = first_free , *prev ;
+
 
     while(cur!=NULL && cur->size < ( size +  sizeof( mem_used_block_t ) ) )
     {
         prev = cur;
         cur = cur->next;
     }
-    return cur;
+    return prev;
  }
 
 #elif defined(BEST_FIT)
@@ -70,7 +71,7 @@ void memory_init(void)
 
     /* TODO: insert your code here */
     heap_start = my_mmap(MEMORY_SIZE);
-    size_t s = MEMORY_SIZE + (4096%MEM_ALIGNMENT) - sizeof(mem_free_block_t);
+    size_t s = MEMORY_SIZE - sizeof(mem_free_block_t);
     // int magic = MAGIC;
     first_free = (mem_free_block_t*)heap_start;
 
@@ -93,18 +94,19 @@ void *memory_alloc(size_t size)
     mem_free_block_t *addr, *prev = NULL;
 
     if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ){
-      addr = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) , prev);
+      prev = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) );
     }
     else {
-      addr = (mem_free_block_t*)allocate_memory( size , prev );
+      prev = (mem_free_block_t*)allocate_memory( size );
     }
+    addr = prev-> next ;
 
     if ( addr == NULL ){
       print_alloc_error(size) ;
       exit(1) ;
     }
     mem_used_block_t *new_addr;
-      
+
     if(addr->size > (sizeof(mem_free_block_t) + sizeof(mem_used_block_t) + size))
     {
 
@@ -122,7 +124,7 @@ void *memory_alloc(size_t size)
     else{
         prev->next = addr->next;
         size_t s = addr->size + sizeof(mem_free_block_t) - sizeof(mem_used_block_t);
-       
+
         new_addr = (mem_used_block_t*)addr;
         new_addr->size = s;
         new_addr += sizeof(mem_used_block_t);
