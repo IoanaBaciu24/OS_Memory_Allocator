@@ -29,12 +29,12 @@ mem_free_block_t *first_free;
 /* You can define here functions that will be compiled only if the
  * symbol FIRST_FIT is defined, that is, only if the selected policy
  * is FF */
- void *allocate_memory(size_t size){
+ void *allocate_memory(size_t size, mem_free_block_t *prev){
     mem_free_block_t *cur = first_free;
 
     while(cur!=NULL && cur->size < ( size +  sizeof( mem_used_block_t ) ) )
     {
-
+        prev = cur;
         cur = cur->next;
     }
     return cur;
@@ -72,7 +72,7 @@ void memory_init(void)
     heap_start = my_mmap(MEMORY_SIZE);
     size_t s = MEMORY_SIZE + (4096%MEM_ALIGNMENT) - sizeof(mem_free_block_t);
     // int magic = MAGIC;
-    first_free = (*mem_free_block_t)heap_start;
+    first_free = (mem_free_block_t*)heap_start;
 
     first_free->size = s;
     first_free->next = NULL;
@@ -90,22 +90,47 @@ void *memory_alloc(size_t size)
     /* TODO : don't forget to call the function print_alloc_info()
      * appropriately */
 
-    mem_used_block_t *addr ;
+    mem_free_block_t *addr, *prev = NULL;
 
     if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ){
-      addr = (mem_used_block_t*)allocate_memory(sizeof(mem_free_block_t) );
+      addr = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) , prev);
     }
     else {
-      addr = (mem_used_block_t*)allocate_memory( size );
+      addr = (mem_free_block_t*)allocate_memory( size , prev );
     }
 
     if ( addr == NULL ){
       print_alloc_error(size) ;
       exit(1) ;
     }
+    mem_used_block_t *new_addr;
+      
+    if(addr->size > (sizeof(mem_free_block_t) + sizeof(mem_used_block_t) + size))
+    {
 
-    print_alloc_info(addr , size ) ;
-    return addr ;
+      mem_free_block_t *new_free = addr + sizeof(mem_used_block_t) + size;
+      size_t new_block_size = addr->size - sizeof(mem_used_block_t) - size;
+      new_free->size = new_block_size;
+      prev->next = new_free;
+      new_free->next = addr->next;
+
+      new_addr = (mem_used_block_t*)addr;
+      new_addr->size = size;
+      new_addr += sizeof(mem_used_block_t);
+
+    }
+    else{
+        prev->next = addr->next;
+        size_t s = addr->size + sizeof(mem_free_block_t) - sizeof(mem_used_block_t);
+       
+        new_addr = (mem_used_block_t*)addr;
+        new_addr->size = s;
+        new_addr += sizeof(mem_used_block_t);
+    }
+
+
+    print_alloc_info(new_addr , size ) ;
+    return new_addr ;
 }
 
 void memory_free(void *p)
