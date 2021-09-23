@@ -16,7 +16,7 @@
 void *heap_start;
 
 /* Pointer to the first free block in the heap */
-mem_free_block_t *first_free; 
+mem_free_block_t *first_free;
 
 
 #define ULONG(x)((long unsigned int)(x))
@@ -32,12 +32,12 @@ mem_free_block_t *first_free;
  void *allocate_memory(size_t size){
     mem_free_block_t *cur = first_free;
 
-    while(cur!=NULL || cur->size >= (size+sizeof(mem_free_block_t*)))
+    while(cur!=NULL && cur->size < ( size +  sizeof( mem_used_block_t ) ) )
     {
-        
+
         cur = cur->next;
-    }  
-    return cur;  
+    }
+    return cur;
  }
 
 #elif defined(BEST_FIT)
@@ -56,7 +56,7 @@ mem_free_block_t *first_free;
 void run_at_exit(void)
 {
     fprintf(stderr,"YEAH B-)\n");
-    
+
     /* TODO: insert your code here */
 }
 
@@ -90,10 +90,22 @@ void *memory_alloc(size_t size)
     /* TODO : don't forget to call the function print_alloc_info()
      * appropriately */
 
-    mem_used_block_t *addr = (mem_used_block_t*)allocate_memory(size);
+    mem_used_block_t *addr ;
 
-    
-    return NULL;
+    if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ){
+      addr = (mem_used_block_t*)allocate_memory(sizeof(mem_free_block_t) );
+    }
+    else {
+      addr = (mem_used_block_t*)allocate_memory( size );
+    }
+
+    if ( addr == NULL ){
+      print_alloc_error(size) ;
+      exit(1) ;
+    }
+
+    print_alloc_info(addr , size ) ;
+    return addr ;
 }
 
 void memory_free(void *p)
@@ -132,20 +144,20 @@ void print_free_info(void *addr){
     else{
         fprintf(stderr, "FREE  at : %lu \n", ULONG(0));
     }
-    
+
 }
 
 void print_alloc_info(void *addr, int size){
   if(addr){
-    fprintf(stderr, "ALLOC at : %lu (%d byte(s))\n", 
+    fprintf(stderr, "ALLOC at : %lu (%d byte(s))\n",
 	    ULONG((char*)addr - (char*)heap_start), size);
   }
   else{
-    fprintf(stderr, "Warning, system is out of memory\n"); 
+    fprintf(stderr, "Warning, system is out of memory\n");
   }
 }
 
-void print_alloc_error(int size) 
+void print_alloc_error(int size)
 {
     fprintf(stderr, "ALLOC error : can't allocate %d bytes\n", size);
 }
@@ -157,7 +169,7 @@ int main(int argc, char **argv){
   /* The main can be changed, it is *not* involved in tests */
   memory_init();
   print_info();
-  int i ; 
+  int i ;
   for( i = 0; i < 10; i++){
     char *b = memory_alloc(rand()%8);
     memory_free(b);
@@ -173,4 +185,4 @@ int main(int argc, char **argv){
   fprintf(stderr,"%lu\n",(long unsigned int) (memory_alloc(9)));
   return EXIT_SUCCESS;
 }
-#endif 
+#endif
