@@ -30,15 +30,15 @@ mem_free_block_t *first_free;
  * symbol FIRST_FIT is defined, that is, only if the selected policy
  * is FF */
  void *allocate_memory(size_t size){
-    mem_free_block_t *cur = first_free , *prev ;
+    mem_free_block_t *cur = first_free  ;
 
 
-    while(cur!=NULL && cur->size < ( size +  sizeof( mem_used_block_t ) ) )
+    while(cur!=NULL && cur->size < ( size ) )
     {
-        prev = cur;
+
         cur = cur->next;
     }
-    return prev;
+    return cur;
  }
 
 #elif defined(BEST_FIT)
@@ -62,7 +62,16 @@ void run_at_exit(void)
 }
 
 
+mem_free_block_t * find_previous( mem_free_block_t * addr ){
+  mem_free_block_t * cur = first_free , * prev = NULL;
+  while (cur) {
+    if ( cur == addr ) return prev ;
+    prev = cur ;
+    cur = cur-> next ;
+  }
+  return prev ;
 
+}
 
 void memory_init(void)
 {
@@ -83,6 +92,9 @@ void memory_init(void)
 
 }
 
+
+
+
 void *memory_alloc(size_t size)
 {
 
@@ -94,44 +106,54 @@ void *memory_alloc(size_t size)
     mem_free_block_t *addr, *prev = NULL;
 
     if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ){
-      prev = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) );
+      addr = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) );
     }
     else {
-      prev = (mem_free_block_t*)allocate_memory( size );
+      addr = (mem_free_block_t*)allocate_memory( size );
     }
-    addr = prev-> next ;
+    // addr = prev-> next ;
 
     if ( addr == NULL ){
       print_alloc_error(size) ;
       exit(1) ;
     }
     mem_used_block_t *new_addr;
+    prev = find_previous( addr ) ;
 
-    if(addr->size > (sizeof(mem_free_block_t) + sizeof(mem_used_block_t) + size))
+    if(addr->size >= ( sizeof(mem_used_block_t) + size)) //case of
     {
 
-      mem_free_block_t *new_free = addr + sizeof(mem_used_block_t) + size;
+      char *new_freeaux = (char *)addr + sizeof(mem_used_block_t)+ size;
+
       size_t new_block_size = addr->size - sizeof(mem_used_block_t) - size;
+      mem_free_block_t *new_free = (mem_free_block_t *)new_freeaux;
       new_free->size = new_block_size;
-      prev->next = new_free;
-      new_free->next = addr->next;
+      if (prev == NULL ){
+        first_free = new_free;
+        first_free->next = NULL;
+      }
+      else{
+        prev->next = new_free;
+        new_free->next = addr->next;
+      }
 
       new_addr = (mem_used_block_t*)addr;
       new_addr->size = size;
-      new_addr += sizeof(mem_used_block_t);
+      new_addr +=  1 ; //sizeof(mem_used_block_t);
 
     }
     else{
+        // to do: when free, handle first node free
         prev->next = addr->next;
         size_t s = addr->size + sizeof(mem_free_block_t) - sizeof(mem_used_block_t);
 
         new_addr = (mem_used_block_t*)addr;
         new_addr->size = s;
-        new_addr += sizeof(mem_used_block_t);
+        new_addr += 1;
     }
 
 
-    print_alloc_info(new_addr , size ) ;
+    print_alloc_info(new_addr, size ) ;
     return new_addr ;
 }
 
