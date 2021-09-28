@@ -157,6 +157,61 @@ void *memory_alloc(size_t size)
     return new_addr ;
 }
 
+
+mem_free_block_t * coalesce(mem_free_block_t *addr1, mem_free_block_t *addr2){
+
+  if((char*)addr2 == ((char*)addr1+sizeof(mem_free_block_t)+addr1->size))
+  {
+      addr1->next = addr2->next;
+      addr1->size += addr2->size + sizeof(mem_free_block_t);
+      return addr1;
+  }
+  else return NULL;
+
+}
+
+void insert_in_free_list(mem_free_block_t *addr)
+{
+
+    mem_free_block_t *cur = first_free, *prev = NULL;
+
+    while(cur!=NULL)
+
+    {
+        if(cur>addr)
+        {
+            if(prev == NULL)
+            {
+              addr->next = first_free;
+              first_free = addr;
+              //coalesce
+              coalesce(first_free, first_free->next);
+            }
+            else{
+              addr->next = cur;
+              prev->next = addr;
+              //coalesce
+              mem_free_block_t *result = coalesce(prev, addr);
+              if(result)
+              {
+                coalesce(result, cur);
+              }
+              else{
+                coalesce(addr, cur);
+              }
+
+            }
+            break;
+        }
+        else{
+          prev = cur;
+          cur = cur->next;
+        }
+    }
+
+}
+
+
 void memory_free(void *p)
 {
 
@@ -164,6 +219,20 @@ void memory_free(void *p)
 
     /* TODO : don't forget to call the function print_free_info()
      * appropriately */
+
+     mem_used_block_t *addr = (mem_used_block_t *)p;
+     addr--;
+     size_t size = addr->size;
+     size_t free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t);
+
+     mem_free_block_t *new_free = (mem_free_block_t * ) addr;
+     new_free->size = free_size;
+     new_free->next = NULL;
+
+     insert_in_free_list(new_free);
+     print_free_info(new_free);
+
+
 
 }
 
