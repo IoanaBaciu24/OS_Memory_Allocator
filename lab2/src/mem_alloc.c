@@ -33,7 +33,7 @@ mem_free_block_t *first_free;
     mem_free_block_t *cur = first_free  ;
 
 
-    while(cur!=NULL && cur->size < ( size ) )
+    while(cur!=NULL &&  (cur->size + sizeof(mem_free_block_t) < size  + sizeof( mem_used_block_t)  ) )
     {
 
         cur = cur->next;
@@ -129,8 +129,8 @@ void *memory_alloc(size_t size)
       mem_free_block_t *new_free = (mem_free_block_t *)new_freeaux;
       new_free->size = new_block_size;
       if (prev == NULL ){
+        new_free->next=first_free->next;
         first_free = new_free;
-        first_free->next = NULL;
       }
       else{
         prev->next = new_free;
@@ -144,7 +144,13 @@ void *memory_alloc(size_t size)
     }
     else{
         // to do: when free, handle first node free
-        prev->next = addr->next;
+        if ( prev == NULL ){
+          first_free = first_free->next ;
+
+        }
+        else {
+          prev->next = addr->next;
+        }
         size_t s = addr->size + sizeof(mem_free_block_t) - sizeof(mem_used_block_t);
 
         new_addr = (mem_used_block_t*)addr;
