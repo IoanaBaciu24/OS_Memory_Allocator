@@ -19,6 +19,11 @@ void *heap_start;
 mem_free_block_t *first_free;
 
 
+mem_free_block_t * next_fit = NULL ;
+
+
+
+
 #define ULONG(x)((long unsigned int)(x))
 
 #if defined(FIRST_FIT)
@@ -71,7 +76,39 @@ mem_free_block_t *first_free;
 
 /* TODO: code specific to the NEXT FIT allocation policy can be
  * inserted here */
+ void *allocate_memory(size_t size){
+    mem_free_block_t *cur = next_fit  ;
 
+
+    while(cur!=NULL &&  (cur->size + sizeof(mem_free_block_t) < size  + sizeof( mem_used_block_t)  ) )
+    {
+
+        cur = cur->next;
+    }
+    if ( cur == NULL   ){
+
+      cur = first_free ;
+
+      while ( cur < next_fit ) {
+        if(   (cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t)  ) ){
+          break ;
+        }
+        cur = cur->next ;
+      }
+
+      if ( cur  == next_fit ) cur = NULL ;
+    }
+
+
+
+     if(cur->next == NULL){
+      next_fit = first_free;
+    }
+    else {
+        next_fit = cur -> next ;
+    }
+    return cur;
+ }
 #endif
 
 
@@ -107,7 +144,7 @@ void memory_init(void)
 
     first_free->size = s;
     first_free->next = NULL;
-
+    next_fit = first_free ;
     /* TODO: start by using the provided my_mmap function to allocate
      * the memory region you are going to manage */
 
@@ -157,6 +194,7 @@ void *memory_alloc(size_t size)
         prev->next = new_free;
         new_free->next = addr->next;
       }
+      next_fit = new_free ;
 
       new_addr = (mem_used_block_t*)addr;
       new_addr->size = size;
@@ -167,10 +205,12 @@ void *memory_alloc(size_t size)
         // to do: when free, handle first node free
         if ( prev == NULL ){
           first_free = first_free->next ;
+          next_fit = first_free ;
 
         }
         else {
           prev->next = addr->next;
+          next_fit = addr -> next ;
         }
         size_t s = addr->size + sizeof(mem_free_block_t) - sizeof(mem_used_block_t);
 
@@ -191,6 +231,9 @@ mem_free_block_t * coalesce(mem_free_block_t *addr1, mem_free_block_t *addr2){
   {
       addr1->next = addr2->next;
       addr1->size += addr2->size + sizeof(mem_free_block_t);
+      if ( next_fit == addr2) {
+        next_fit = addr1 ;
+      }
       return addr1;
   }
   else return NULL;
