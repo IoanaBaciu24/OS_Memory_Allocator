@@ -45,6 +45,27 @@ mem_free_block_t *first_free;
 
 /* TODO: code specific to the BEST FIT allocation policy can be
  * inserted here */
+ void *allocate_memory(size_t size){
+    mem_free_block_t *cur = first_free  ;
+    mem_free_block_t *result = NULL  ;
+
+
+    while(cur!=NULL )
+    {
+        if ( (cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t)  )){
+          if (result == NULL){
+            result = cur ;
+          }
+          else {
+            if ( result -> size > cur->size ){
+              result = cur ;
+            }
+          }
+        }
+        cur = cur->next;
+    }
+    return result;
+ }
 
 #elif defined(NEXT_FIT)
 
@@ -158,7 +179,7 @@ void *memory_alloc(size_t size)
         new_addr += 1;
     }
 
-    print_mem_state();
+    //print_mem_state();
     print_alloc_info(new_addr, size ) ;
     return new_addr ;
 }
@@ -242,7 +263,7 @@ void memory_free(void *p)
      //new_free = (mem_used_block_t*)addr;
      //new_free ++;
      mem_used_block_t * res =(mem_used_block_t*) insert_in_free_list(new_free);
-     print_mem_state();
+     //print_mem_state();
      print_free_info(addr+1);
 
 
