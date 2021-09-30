@@ -152,7 +152,7 @@ void *memory_alloc(size_t size)
         new_addr += 1;
     }
 
-
+    print_mem_state();
     print_alloc_info(new_addr, size ) ;
     return new_addr ;
 }
@@ -170,7 +170,7 @@ mem_free_block_t * coalesce(mem_free_block_t *addr1, mem_free_block_t *addr2){
 
 }
 
-void insert_in_free_list(mem_free_block_t *addr)
+mem_free_block_t* insert_in_free_list(mem_free_block_t *addr)
 {
 
     mem_free_block_t *cur = first_free, *prev = NULL;
@@ -185,7 +185,9 @@ void insert_in_free_list(mem_free_block_t *addr)
               addr->next = first_free;
               first_free = addr;
               //coalesce
-              coalesce(first_free, first_free->next);
+              mem_free_block_t *ret = coalesce(first_free, first_free->next);
+              if(ret == NULL) return first_free;
+              return ret;
             }
             else{
               addr->next = cur;
@@ -195,9 +197,11 @@ void insert_in_free_list(mem_free_block_t *addr)
               if(result)
               {
                 coalesce(result, cur);
+                return result;
               }
               else{
                 coalesce(addr, cur);
+                return addr;
               }
 
             }
@@ -229,8 +233,11 @@ void memory_free(void *p)
      new_free->size = free_size;
      new_free->next = NULL;
 
-     insert_in_free_list(new_free);
-     print_free_info(new_free);
+     //new_free = (mem_used_block_t*)addr;
+     //new_free ++;
+     mem_used_block_t * res =(mem_used_block_t*) insert_in_free_list(new_free);
+     print_mem_state();
+     print_free_info(addr+1);
 
 
 
@@ -244,10 +251,33 @@ size_t memory_get_allocated_block_size(void *addr)
     return 0;
 }
 
+int isFree(char *addr)
+{
+  mem_free_block_t *cur = first_free;
+
+  while (cur!=NULL) {
+
+    if(addr>= (char * ) cur+sizeof(mem_free_block_t) && addr < (char*)cur + cur->size + sizeof(mem_free_block_t))
+      return 1;
+    cur = cur ->next;
+    /* code */
+  }
+  return 0;
+}
+
 
 void print_mem_state(void)
 {
     /* TODO: insert your code here */
+    char * addr = ( char *)heap_start ;
+    char * final = ( char *)heap_start + MEMORY_SIZE ;
+    while ( addr < final ) {
+      if(isFree(addr))
+        printf(".");
+        else printf("X");
+      addr ++ ;
+    }
+    printf("\n");
 }
 
 
