@@ -349,19 +349,19 @@ void print_mem_state(void)
     // }
     // printf("\n");
     int dist=0, i=0;
-    mem_free_block_t prev = NULL;
-    if(heap_start != first_free)
+    mem_free_block_t *prev = NULL;
+    if((mem_free_block_t *)heap_start != (mem_free_block_t *)first_free)
     {
-      dist = first_free-heap_start;
+      dist = (char *)first_free-(char *)heap_start;
       for(i=0; i<dist;i++)
         printf(".");
     }
-    int cur = first_free;
+    mem_free_block_t *cur = first_free;
     while(cur!=NULL)
     {
       for(i=0;i<sizeof(mem_free_block_t);i++)
         printf("X");
-      for(i=0;i<cur->size);i++)
+      for(i=0;i<cur->size;i++)
         printf(".");
 
       if(cur->next !=NULL)
