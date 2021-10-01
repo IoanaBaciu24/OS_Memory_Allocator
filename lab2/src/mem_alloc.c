@@ -339,15 +339,46 @@ int isFree(char *addr)
 void print_mem_state(void)
 {
     /* TODO: insert your code here */
-    char * addr = ( char *)heap_start ;
-    char * final = ( char *)heap_start + MEMORY_SIZE ;
-    while ( addr < final ) {
-      if(isFree(addr))
+    // char * addr = ( char *)heap_start ;
+    // char * final = ( char *)heap_start + MEMORY_SIZE ;
+    // while ( addr < final ) {
+    //   if(isFree(addr))
+    //     printf(".");
+    //     else printf("X");
+    //   addr ++ ;
+    // }
+    // printf("\n");
+    int dist=0, i=0;
+    mem_free_block_t prev = NULL;
+    if(heap_start != first_free)
+    {
+      dist = first_free-heap_start;
+      for(i=0; i<dist;i++)
         printf(".");
-        else printf("X");
-      addr ++ ;
     }
-    printf("\n");
+    int cur = first_free;
+    while(cur!=NULL)
+    {
+      for(i=0;i<sizeof(mem_free_block_t);i++)
+        printf("X");
+      for(i=0;i<cur->size);i++)
+        printf(".");
+
+      if(cur->next !=NULL)
+      {
+        dist = (char*)cur->next - (char*)cur + cur->size;
+        for(i=0; i<dist;i++)
+          printf(".");
+      }
+      prev = cur;
+      cur = cur->next;
+
+    }
+    if(prev!=NULL){
+    dist = ( char *)heap_start + MEMORY_SIZE - (char*)prev - prev->size;
+        for(i=0; i<dist;i++)
+          printf(".");
+    }
 }
 
 
