@@ -373,7 +373,6 @@ void print_mem_state(void)
       else addr++ ;
 
     }
-    printf("\n");
 }
 
 
