@@ -85,7 +85,7 @@ mem_free_block_t * next_fit = NULL ;
 
         cur = cur->next;
     }
-    if ( cur == NULL   ){
+    if ( cur == NULL && next_fit != first_free ){
 
       cur = first_free ;
 
@@ -99,14 +99,17 @@ mem_free_block_t * next_fit = NULL ;
       if ( cur  == next_fit ) cur = NULL ;
     }
 
-
-
-     if(cur->next == NULL){
-      next_fit = first_free;
-    }
-    else {
+    if ( cur ){
+      if(cur->next == NULL){
+        next_fit = first_free;
+      }
+      else {
         next_fit = cur -> next ;
+      }
     }
+
+
+
     return cur;
  }
 #endif
@@ -336,16 +339,39 @@ int isFree(char *addr)
 }
 
 
+char * print_util( mem_free_block_t * cur , char * addr  ) {
+
+    if ( (char*) (cur) == addr ){
+      char * p ;
+      // print * for bytes used for mem_free_block
+      for ( p = addr ; p < addr + sizeof(mem_free_block_t) ; p++ ){
+        printf("@");
+      }
+      for (  ; p < (addr + sizeof(mem_free_block_t) + (cur)-> size ); p++ ){
+        printf(".");
+      }
+      return p  ;
+    }
+      printf("X");
+      return  NULL ;
+  }
+
+
 void print_mem_state(void)
 {
     /* TODO: insert your code here */
     char * addr = ( char *)heap_start ;
     char * final = ( char *)heap_start + MEMORY_SIZE ;
+    mem_free_block_t * curfree =  first_free;
+
     while ( addr < final ) {
-      if(isFree(addr))
-        printf(".");
-        else printf("X");
-      addr ++ ;
+      char * x  = print_util( curfree , addr  ) ;
+      if ( x )  {
+        addr = x ;
+        curfree = curfree->next ;
+      }
+      else addr++ ;
+
     }
     printf("\n");
 }
