@@ -184,9 +184,19 @@ void *memory_alloc(size_t size)
     if(addr->size >= ( sizeof(mem_used_block_t) + size)) //case of
     {
 
-      char *new_freeaux = (char *)addr + sizeof(mem_used_block_t)+ size;
+      char *new_freeaux ;
+      size_t new_block_size ;
 
-      size_t new_block_size = addr->size - sizeof(mem_used_block_t) - size;
+      if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ) {
+        new_freeaux = (char *)addr + sizeof(mem_free_block_t) ;
+        new_block_size = addr->size - sizeof(mem_free_block_t) ;
+      }
+      else {
+        new_freeaux = (char *)addr + sizeof(mem_used_block_t)+ size;
+        new_block_size = addr->size - sizeof(mem_used_block_t) - size;
+      }
+
+
       mem_free_block_t *new_free = (mem_free_block_t *)new_freeaux;
       new_free->size = new_block_size;
       if (prev == NULL ){
@@ -215,6 +225,8 @@ void *memory_alloc(size_t size)
           prev->next = addr->next;
           next_fit = addr -> next ;
         }
+
+
         size_t s = addr->size + sizeof(mem_free_block_t) - sizeof(mem_used_block_t);
 
         new_addr = (mem_used_block_t*)addr;
@@ -291,16 +303,23 @@ mem_free_block_t* insert_in_free_list(mem_free_block_t *addr)
 
 void memory_free(void *p)
 {
-
+    //printf("%d\n",sizeof(mem_free_block_t));
+    //printf("%d\n",sizeof(mem_used_block_t));
     /* TODO: insert your code here */
 
     /* TODO : don't forget to call the function print_free_info()
      * appropriately */
 
-     mem_used_block_t *addr = (mem_used_block_t *)p;
-     addr--;
+     //mem_used_block_t *addr = (mem_used_block_t *)p;
+     //addr--;
+     mem_used_block_t *addr  = ( mem_used_block_t * ) (( char * ) p - sizeof(mem_used_block_t) ) ;
+
      size_t size = addr->size;
-     size_t free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t);
+     size_t free_size  ;
+     //free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t);
+     if ( sizeof(mem_used_block_t) + size > sizeof(mem_free_block_t)  )
+      free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t);
+     else free_size = 0 ;
 
      mem_free_block_t *new_free = (mem_free_block_t * ) addr;
      new_free->size = free_size;
@@ -319,9 +338,10 @@ void memory_free(void *p)
 size_t memory_get_allocated_block_size(void *addr)
 {
 
-    /* TODO: insert your code here */
+    mem_used_block_t * p =  ( mem_used_block_t * ) addr ;
+    p-- ;
+    return p->size ;
 
-    return 0;
 }
 
 int isFree(char *addr)
@@ -371,8 +391,8 @@ void print_mem_state(void)
         curfree = curfree->next ;
       }
       else addr++ ;
-
     }
+    printf("\n");
 }
 
 
