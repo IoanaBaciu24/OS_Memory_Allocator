@@ -167,7 +167,7 @@ void *memory_alloc(size_t size)
     mem_free_block_t *addr, *prev = NULL;
 
     if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ){
-      addr = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) );
+      addr = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) - sizeof(mem_used_block_t));
     }
     else {
       addr = (mem_free_block_t*)allocate_memory( size );
