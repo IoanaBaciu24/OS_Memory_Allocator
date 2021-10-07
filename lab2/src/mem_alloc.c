@@ -117,8 +117,12 @@ mem_free_block_t * next_fit = NULL ;
 
 void run_at_exit(void)
 {
-    fprintf(stderr,"YEAH B-)\n");
-
+    if ( first_free->size == MEMORY_SIZE - sizeof(mem_free_block_t) ) {
+      fprintf(stderr,"YEAH B-)\n");
+    }
+    else {
+      fprintf(stderr,"LEAAAAAAAAAAAAAAAAKS \n");
+    }
     /* TODO: insert your code here */
 }
 
