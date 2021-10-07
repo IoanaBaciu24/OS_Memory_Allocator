@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdint.h>
 
 
 #include "mem_alloc_types.h"
@@ -38,10 +39,14 @@ mem_free_block_t * next_fit = NULL ;
     mem_free_block_t *cur = first_free  ;
 
 
-    while(cur!=NULL &&  (cur->size + sizeof(mem_free_block_t) < size  + sizeof( mem_used_block_t)  ) )
+    while(cur!=NULL)
     {
+      int padding =   ( - ( (uintptr_t) addr + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+        if ( cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t) + padding  ) {
 
-        cur = cur->next;
+          cur = cur->next;
+        }
+
     }
     return cur;
  }
@@ -170,7 +175,7 @@ void *memory_alloc(size_t size)
       addr = (mem_free_block_t*)allocate_memory(sizeof(mem_free_block_t) - sizeof(mem_used_block_t));
     }
     else {
-      addr = (mem_free_block_t*)allocate_memory( size );
+      addr = (mem_free_block_t*)allocate_memory( size   );
     }
     // addr = prev-> next ;
 
@@ -183,17 +188,20 @@ void *memory_alloc(size_t size)
 
     if(addr->size >= ( sizeof(mem_used_block_t) + size)) //case of
     {
+      int padding =   ( - ( (uintptr_t) addr + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+      //fprintf(stdout,"%d\n",padding);
+
 
       char *new_freeaux ;
       size_t new_block_size ;
 
       if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ) {
-        new_freeaux = (char *)addr + sizeof(mem_free_block_t) ;
-        new_block_size = addr->size - sizeof(mem_free_block_t) ;
+        new_freeaux = (char *)addr + sizeof(mem_free_block_t) + padding  ;
+        new_block_size = addr->size - sizeof(mem_free_block_t) - padding ;
       }
       else {
-        new_freeaux = (char *)addr + sizeof(mem_used_block_t)+ size;
-        new_block_size = addr->size - sizeof(mem_used_block_t) - size;
+        new_freeaux = (char *)addr + sizeof(mem_used_block_t)+ size + padding ;
+        new_block_size = addr->size - sizeof(mem_used_block_t) - size - padding ;
       }
 
 
@@ -209,9 +217,24 @@ void *memory_alloc(size_t size)
       }
       next_fit = new_free ;
 
-      new_addr = (mem_used_block_t*)addr;
-      new_addr->size = size;
-      new_addr +=  1 ; //sizeof(mem_used_block_t);
+
+      if ( padding > sizeof(mem_free_block_t)){
+        mem_free_block_t * new_free_padd ;
+        new_free_padd = (mem_free_block_t *) (char * )addr ;
+        new_free_padd->next = new_free ;
+        new_free_padd -> size = padding - sizeof(mem_free_block_t) ;
+
+        new_addr = (mem_used_block_t*)  ((char * )addr + padding );
+        new_addr->size = size;
+        new_addr =  (mem_used_block_t*)(( char * ) addr + sizeof(mem_used_block_t) + padding  );
+      }
+      else {
+        new_addr = (mem_used_block_t*)  ((char * )addr + padding );
+        new_addr->size = size  ;
+        new_addr =  (mem_used_block_t*)(( char * ) addr + sizeof(mem_used_block_t) + padding  );
+      }
+
+      //new_addr +=  1 ; //sizeof(mem_used_block_t);
 
     }
     else{
@@ -242,10 +265,11 @@ void *memory_alloc(size_t size)
 
 mem_free_block_t * coalesce(mem_free_block_t *addr1, mem_free_block_t *addr2){
 
-  if((char*)addr2 == ((char*)addr1+sizeof(mem_free_block_t)+addr1->size))
+  //if((char*)addr2 == ((char*)addr1+sizeof(mem_free_block_t)+addr1->size))
+  if(  ( (char*)addr2 - ((char*)addr1+sizeof(mem_free_block_t)+addr1->size)   ) < sizeof(mem_free_block_t) )
   {
       addr1->next = addr2->next;
-      addr1->size += addr2->size + sizeof(mem_free_block_t);
+      addr1->size += addr2->size + sizeof(mem_free_block_t) +  (char*)addr2 - ((char*)addr1+sizeof(mem_free_block_t)+addr1->size);
       if ( next_fit == addr2) {
         next_fit = addr1 ;
       }
