@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
         int count=1;
 
         memset(block_pointer,0,1024*sizeof(char*));
-        
+
 
 	memory_init();
 
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
                     block_pointer[count]=memory_alloc(size);
                     count++;
                     break;
-		case 'f': 
+		case 'f':
                     scanf("%d",&index);
                     memory_free(block_pointer[index]);
                     break;
@@ -49,9 +49,12 @@ int main(int argc, char *argv[]) {
 		case 'h':
                     help();
                     break;
-		case 'q':
+    case 't':
+                    test_illegal_free();
+                    break;
+    case 'q':
                     exit(0);
-		default:
+    default:
                     fprintf(stderr,"Command not found !\n");
 		}
 		/* empty stdin if some chars remain */

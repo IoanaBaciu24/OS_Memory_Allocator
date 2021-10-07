@@ -150,6 +150,9 @@ void memory_init(void)
     first_free = (mem_free_block_t*)heap_start;
 
     first_free->size = s;
+    first_free->check_size = s;
+    first_free->magic = MAGIC_FREE;
+
     first_free->next = NULL;
     next_fit = first_free ;
     /* TODO: start by using the provided my_mmap function to allocate
@@ -158,7 +161,22 @@ void memory_init(void)
 }
 
 
+int check_mem_used_block ( mem_used_block_t * addr ){
+  if(addr == NULL)
+  return 1;
+  return (addr->size == addr ->check_size) && (addr->magic == MAGIC_USED) ;
+}
 
+int check_mem_free_block ( mem_free_block_t * addr ){
+  if(addr == NULL)
+    return 1;
+  if(addr->next != NULL)
+  {
+    if(addr->next->magic != MAGIC_FREE)
+      return 0;
+  }
+  return  (addr->size == addr->check_size) && (addr->magic == MAGIC_FREE) ;  ;
+}
 
 void *memory_alloc(size_t size)
 {
@@ -177,14 +195,20 @@ void *memory_alloc(size_t size)
       addr = (mem_free_block_t*)allocate_memory( size );
     }
     // addr = prev-> next ;
-
-    if ( addr == NULL ){
+    if ( addr == NULL  ){
       print_alloc_error(size) ;
       exit(1) ;
     }
+    if ( check_mem_free_block(addr) == 0  ){
+      printf("metadata corruptioooooooooooooooooon !\n" );
+      exit(1);
+    }
     mem_used_block_t *new_addr;
     prev = find_previous( addr ) ;
-
+    if ( prev && check_mem_free_block(prev) == 0  ){
+      printf("metadata corruptioooooooooooooooooon !\n" );
+      exit(1);
+    }
     if(addr->size >= ( sizeof(mem_used_block_t) + size)) //case of
     {
 
@@ -203,6 +227,9 @@ void *memory_alloc(size_t size)
 
       mem_free_block_t *new_free = (mem_free_block_t *)new_freeaux;
       new_free->size = new_block_size;
+      new_free->check_size = new_block_size;
+      new_free->magic = MAGIC_FREE;
+
       if (prev == NULL ){
         new_free->next=first_free->next;
         first_free = new_free;
@@ -215,6 +242,9 @@ void *memory_alloc(size_t size)
 
       new_addr = (mem_used_block_t*)addr;
       new_addr->size = size;
+      new_addr->check_size = size;
+      new_addr ->magic = MAGIC_USED ;
+
       new_addr +=  1 ; //sizeof(mem_used_block_t);
 
     }
@@ -235,6 +265,8 @@ void *memory_alloc(size_t size)
 
         new_addr = (mem_used_block_t*)addr;
         new_addr->size = s;
+        new_addr->check_size = s;
+        new_addr ->magic = MAGIC_USED ;
         new_addr += 1;
     }
 
@@ -250,6 +282,7 @@ mem_free_block_t * coalesce(mem_free_block_t *addr1, mem_free_block_t *addr2){
   {
       addr1->next = addr2->next;
       addr1->size += addr2->size + sizeof(mem_free_block_t);
+      addr1->check_size = addr1->size;
       if ( next_fit == addr2) {
         next_fit = addr1 ;
       }
@@ -269,6 +302,10 @@ mem_free_block_t* insert_in_free_list(mem_free_block_t *addr)
     {
         if(cur>addr)
         {
+          if (check_mem_free_block(addr->next) == 0){
+            printf("corruptioooooooooooooooooon in mem_free_block \n");
+            exit(1);
+          }
             if(prev == NULL)
             {
               addr->next = first_free;
@@ -301,24 +338,28 @@ mem_free_block_t* insert_in_free_list(mem_free_block_t *addr)
           cur = cur->next;
         }
     }
+    return NULL;
 
 }
 
 
 void memory_free(void *p)
 {
-    //printf("%d\n",sizeof(mem_free_block_t));
-    //printf("%d\n",sizeof(mem_used_block_t));
-    /* TODO: insert your code here */
 
-    /* TODO : don't forget to call the function print_free_info()
-     * appropriately */
-
-     //mem_used_block_t *addr = (mem_used_block_t *)p;
-     //addr--;
      mem_used_block_t *addr  = ( mem_used_block_t * ) (( char * ) p - sizeof(mem_used_block_t) ) ;
+    // if ( addr-> magic != MAGIC ){
+    //   printf("memory free error ! \n" );
+    //   exit(1);
+     //}
+     //printf("%d :::: %d :::: %d ::: \n",addr->size , addr->check_size , addr->magic );
+     if(check_mem_used_block(addr) == 0)
+     {
+       printf(" metadata corruptioooooooooooooooooon in mem used  ! \n" );
+       exit(1);
+     }
 
      size_t size = addr->size;
+     addr-> magic = 0 ;
      size_t free_size  ;
      //free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t);
      if ( sizeof(mem_used_block_t) + size > sizeof(mem_free_block_t)  )
@@ -327,6 +368,8 @@ void memory_free(void *p)
 
      mem_free_block_t *new_free = (mem_free_block_t * ) addr;
      new_free->size = free_size;
+     new_free -> check_size = free_size ;
+     new_free -> magic = MAGIC_FREE ;
      new_free->next = NULL;
 
      //new_free = (mem_used_block_t*)addr;
@@ -428,7 +471,30 @@ void print_alloc_error(int size)
 {
     fprintf(stderr, "ALLOC error : can't allocate %d bytes\n", size);
 }
+void test_illegal_free(int argc, char **argv){
 
+  /* The main can be changed, it is *not* involved in tests */
+  memory_init();
+  //print_info();
+  int i ;
+  for( i = 0; i < 10; i++){
+    char *b = memory_alloc(rand()%8);
+    memory_free(b);
+  }
+
+  char * a = memory_alloc(100);
+  memory_free(a);
+
+
+
+  a = memory_alloc(10);
+
+  memory_free(a);
+  //memory_free(a);
+
+  fprintf(stderr,"%lu\n",(long unsigned int) (memory_alloc(9)));
+
+}
 
 #ifdef MAIN
 int main(int argc, char **argv){
@@ -447,6 +513,7 @@ int main(int argc, char **argv){
 
 
   a = memory_alloc(10);
+
   memory_free(a);
 
   fprintf(stderr,"%lu\n",(long unsigned int) (memory_alloc(9)));
