@@ -354,7 +354,7 @@ void memory_free(void *p)
      //printf("%d :::: %d :::: %d ::: \n",addr->size , addr->check_size , addr->magic );
      if(check_mem_used_block(addr) == 0)
      {
-       printf(" metadata corruptioooooooooooooooooon in mem used  ! \n" );
+       printf("free error : metadata is corrupted or you tried a double free !!!\n" );
        exit(1);
      }
 
@@ -471,7 +471,7 @@ void print_alloc_error(int size)
 {
     fprintf(stderr, "ALLOC error : can't allocate %d bytes\n", size);
 }
-void test_illegal_free(int argc, char **argv){
+void test_illegal_free(){
 
   /* The main can be changed, it is *not* involved in tests */
   memory_init();
@@ -490,8 +490,22 @@ void test_illegal_free(int argc, char **argv){
   a = memory_alloc(10);
 
   memory_free(a);
-  //memory_free(a);
+  memory_free(a);
 
+  fprintf(stderr,"%lu\n",(long unsigned int) (memory_alloc(9)));
+
+}
+
+void test_corruption(){
+
+  /* The main can be changed, it is *not* involved in tests */
+  memory_init();
+  //print_info();
+
+  char * a = memory_alloc(100);
+  mem_used_block_t * add =  ((mem_used_block_t *)a - 1 ) ;
+  add -> size = add-> size - 66 ;
+  memory_free(a);
   fprintf(stderr,"%lu\n",(long unsigned int) (memory_alloc(9)));
 
 }

@@ -52,6 +52,9 @@ int main(int argc, char *argv[]) {
     case 't':
                     test_illegal_free();
                     break;
+    case 'c':
+                    test_corruption();
+                    break;
     case 'q':
                     exit(0);
     default:
