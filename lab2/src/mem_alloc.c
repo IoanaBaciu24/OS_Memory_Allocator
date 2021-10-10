@@ -40,9 +40,9 @@ mem_free_block_t * next_fit = NULL ;
 
     while(cur!=NULL  )
     {
-      int padding_mem_used =   (-(uintptr_t) cur ) % MEM_ALIGNMENT ;
-      int padding =   ( - ( (uintptr_t) cur + padding_mem_used + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
-        if ( cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t) + padding_mem_used + padding   ) {
+      //int padding_mem_used =   (-(uintptr_t) cur ) % MEM_ALIGNMENT ;
+      //int padding =   ( - ( (uintptr_t) cur + padding_mem_used + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+        if ( cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t)    ) {
           break ;
         }
         cur = cur->next;
