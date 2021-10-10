@@ -38,16 +38,27 @@ mem_free_block_t * next_fit = NULL ;
  void *allocate_memory(size_t size){
     mem_free_block_t *cur = first_free  ;
 
-
-    while(cur!=NULL)
+    while(cur!=NULL  )
     {
-      int padding =   ( - ( (uintptr_t) addr + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
-        if ( cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t) + padding  ) {
+      int padding_mem_used =   (-(uintptr_t) cur ) % MEM_ALIGNMENT ;
+      int padding =   ( - ( (uintptr_t) cur + padding_mem_used + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+        if ( cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t) + padding_mem_used + padding   ) {
+          break ;
+        }
+        cur = cur->next;
+
+    }
+    /*while(cur!=NULL)
+    {
+      int padding_mem_used =   (-(uintptr_t) cur ) % MEM_ALIGNMENT ;
+      int padding =   ( - ( (uintptr_t) cur + padding_mem_used + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+        if ( cur->size + sizeof(mem_free_block_t) >= size  + sizeof( mem_used_block_t) + padding_mem_used + padding   ) {
 
           cur = cur->next;
         }
 
     }
+    */
     return cur;
  }
 
@@ -127,7 +138,6 @@ void run_at_exit(void)
     /* TODO: insert your code here */
 }
 
-
 mem_free_block_t * find_previous( mem_free_block_t * addr ){
   mem_free_block_t * cur = first_free , * prev = NULL;
   while (cur) {
@@ -153,6 +163,7 @@ void memory_init(void)
     first_free->size = s;
     first_free->next = NULL;
     next_fit = first_free ;
+
     /* TODO: start by using the provided my_mmap function to allocate
      * the memory region you are going to manage */
 
@@ -186,9 +197,11 @@ void *memory_alloc(size_t size)
     mem_used_block_t *new_addr;
     prev = find_previous( addr ) ;
 
-    if(addr->size >= ( sizeof(mem_used_block_t) + size)) //case of
+    int padding_mem_used =   (-(uintptr_t) addr ) % MEM_ALIGNMENT ;
+    int padding =   ( - ( (uintptr_t) addr + padding_mem_used + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+    if(addr->size >= ( sizeof(mem_used_block_t) + size + padding + padding_mem_used)) //case of
     {
-      int padding =   ( - ( (uintptr_t) addr + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+
       //fprintf(stdout,"%d\n",padding);
 
 
@@ -196,12 +209,12 @@ void *memory_alloc(size_t size)
       size_t new_block_size ;
 
       if ( sizeof( mem_used_block_t  ) + size < sizeof(mem_free_block_t) ) {
-        new_freeaux = (char *)addr + sizeof(mem_free_block_t) + padding  ;
-        new_block_size = addr->size - sizeof(mem_free_block_t) - padding ;
+        new_freeaux = (char *)addr + sizeof(mem_free_block_t) + padding + padding_mem_used  ;
+        new_block_size = addr->size - sizeof(mem_free_block_t) - padding - padding_mem_used ;
       }
       else {
-        new_freeaux = (char *)addr + sizeof(mem_used_block_t)+ size + padding ;
-        new_block_size = addr->size - sizeof(mem_used_block_t) - size - padding ;
+        new_freeaux = (char *)addr + sizeof(mem_used_block_t)+ size + padding + padding_mem_used ;
+        new_block_size = addr->size - sizeof(mem_used_block_t) - size - padding - padding_mem_used ;
       }
 
 
@@ -217,22 +230,23 @@ void *memory_alloc(size_t size)
       }
       next_fit = new_free ;
 
+      mem_free_block_t * new_free_padd = NULL  ;
+      mem_free_block_t * new_used_padd = NULL ;
 
-      if ( padding > sizeof(mem_free_block_t)){
-        mem_free_block_t * new_free_padd ;
-        new_free_padd = (mem_free_block_t *) (char * )addr ;
-        new_free_padd->next = new_free ;
-        new_free_padd -> size = padding - sizeof(mem_free_block_t) ;
 
-        new_addr = (mem_used_block_t*)  ((char * )addr + padding );
-        new_addr->size = size;
-        new_addr =  (mem_used_block_t*)(( char * ) addr + sizeof(mem_used_block_t) + padding  );
-      }
-      else {
-        new_addr = (mem_used_block_t*)  ((char * )addr + padding );
-        new_addr->size = size  ;
-        new_addr =  (mem_used_block_t*)(( char * ) addr + sizeof(mem_used_block_t) + padding  );
-      }
+      new_addr = (mem_used_block_t*)  ((char * )addr + padding_mem_used );
+      /*if ( padding_mem_used >= sizeof(mem_free_block_t)){
+        new_used_padd = (mem_free_block_t *) (char * )addr ;
+        new_used_padd -> size = padding_mem_used - sizeof(mem_free_block_t) ;
+        new_used_padd ->next = new_freeaux ;
+
+        new_addr = (mem_used_block_t*)  ((char * )addr + padding_mem_used );
+      }*/
+
+      new_addr->size = size + padding ;
+      new_addr =  (mem_used_block_t*)(( char * ) addr + padding_mem_used + sizeof(mem_used_block_t) + padding  );
+
+
 
       //new_addr +=  1 ; //sizeof(mem_used_block_t);
 
@@ -250,11 +264,15 @@ void *memory_alloc(size_t size)
         }
 
 
-        size_t s = addr->size + sizeof(mem_free_block_t) - sizeof(mem_used_block_t);
+        size_t s = addr->size + padding + padding_mem_used +  sizeof(mem_free_block_t) - sizeof(mem_used_block_t) ;
 
         new_addr = (mem_used_block_t*)addr;
         new_addr->size = s;
-        new_addr += 1;
+
+        size_t x = sizeof(mem_used_block_t) ;
+        if ( MEM_ALIGNMENT > sizeof(mem_used_block_t)) x = MEM_ALIGNMENT ;
+
+        new_addr = (mem_used_block_t*)  ((char * )addr + x);
     }
 
     //print_mem_state();
@@ -266,7 +284,7 @@ void *memory_alloc(size_t size)
 mem_free_block_t * coalesce(mem_free_block_t *addr1, mem_free_block_t *addr2){
 
   //if((char*)addr2 == ((char*)addr1+sizeof(mem_free_block_t)+addr1->size))
-  if(  ( (char*)addr2 - ((char*)addr1+sizeof(mem_free_block_t)+addr1->size)   ) < sizeof(mem_free_block_t) )
+  if(  ( (char*)addr2 - ((char*)addr1+sizeof(mem_free_block_t)+addr1->size)   ) < MEM_ALIGNMENT )
   {
       addr1->next = addr2->next;
       addr1->size += addr2->size + sizeof(mem_free_block_t) +  (char*)addr2 - ((char*)addr1+sizeof(mem_free_block_t)+addr1->size);
@@ -336,13 +354,20 @@ void memory_free(void *p)
 
      //mem_used_block_t *addr = (mem_used_block_t *)p;
      //addr--;
-     mem_used_block_t *addr  = ( mem_used_block_t * ) (( char * ) p - sizeof(mem_used_block_t) ) ;
+     size_t x = sizeof(mem_used_block_t) ;
+     if ( MEM_ALIGNMENT > sizeof(mem_used_block_t)) x = MEM_ALIGNMENT ;
+
+
+     mem_used_block_t *addr  = ( mem_used_block_t * ) (( char * ) p - x ) ;
+     int padding_mem_used =   (-(uintptr_t) addr - sizeof(mem_used_block_t) ) % MEM_ALIGNMENT ;
+     //int padding =   ( - ( (uintptr_t) cur + padding_mem_used + sizeof ( mem_used_block_t ) ) ) % MEM_ALIGNMENT ;
+
 
      size_t size = addr->size;
      size_t free_size  ;
      //free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t);
-     if ( sizeof(mem_used_block_t) + size > sizeof(mem_free_block_t)  )
-      free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t);
+     if ( sizeof(mem_used_block_t) + size + padding_mem_used  > sizeof(mem_free_block_t)  )
+      free_size = sizeof(mem_used_block_t) + size - sizeof(mem_free_block_t) + padding_mem_used;
      else free_size = 0 ;
 
      mem_free_block_t *new_free = (mem_free_block_t * ) addr;
@@ -353,7 +378,7 @@ void memory_free(void *p)
      //new_free ++;
      mem_used_block_t * res =(mem_used_block_t*) insert_in_free_list(new_free);
      //print_mem_state();
-     print_free_info(addr+1);
+     print_free_info(p);
 
 
 
